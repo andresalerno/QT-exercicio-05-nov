@@ -166,3 +166,89 @@ TOTAL                          24      4      6      1    77%
 
 A linha 22 passou a ser coberta, e a cobertura subiu de 70% para 77%. Ainda não estão
 cobertas as linhas 27-29 (`pop`) e 33 (`top` com a pilha vazia), que serão tratadas na branch 2.
+
+### Branch 2: `test/cobertura-custom-stack`
+
+#### Passo 5 – Reescrita da suíte de testes
+
+Melhorias no arquivo `test/custom_stack_test.py`:
+
+- o teste original virou `test_push_one_element_in_stack`, sem a variável não usada, com `is False`
+  e com a ordem `real == esperado` nos asserts;
+- imports explícitos no lugar do `import *`;
+- uma fixture `stack` cria uma `CustomStack(5)` nova para cada teste, que ficam isolados entre si;
+- 7 testes novos cobrem o restante do comportamento da classe.
+
+| Teste | O que verifica | Linhas / branches |
+|-------|----------------|-------------------|
+| `test_new_stack_is_empty` | pilha nova vazia, tamanho 0 e limite configurado | `__init__`, `size`, `is_empty` |
+| `test_push_one_element_in_stack` | `push` de um elemento (teste original refatorado) | `push`, `top` |
+| `test_push_many_elements_top_is_last_pushed` | `top` retorna o último empilhado | `push`, `top` |
+| `test_pop_returns_elements_in_lifo_order` | `pop` segue a ordem LIFO até esvaziar | `pop` (27-29, ramo falso) |
+| `test_top_does_not_remove_element` | `top` não remove o elemento | `top` |
+| `test_pop_on_empty_stack_raises_exception` | `pop` em pilha vazia lança `StackEmptyException` | linha 28 (ramo verdadeiro) |
+| `test_top_on_empty_stack_raises_exception` | `top` em pilha vazia lança `StackEmptyException` | linha 33 (ramo verdadeiro) |
+| `test_push_on_full_stack_raises_exception` | `push` em pilha cheia lança `StackFullException` | linha 22 (ramo verdadeiro) |
+| `test_push_after_pop_on_full_stack_is_allowed` | depois de um `pop`, a pilha cheia volta a aceitar `push` | `push` (ramo falso no limite) |
+
+#### Passo 6 – Resultado: 100% de cobertura
+
+```sh
+python -m pytest test/ -v --cov=src --cov-branch --cov-report=term-missing
+```
+
+```text
+test/custom_stack_test.py::test_new_stack_is_empty PASSED                     [ 11%]
+test/custom_stack_test.py::test_push_one_element_in_stack PASSED              [ 22%]
+test/custom_stack_test.py::test_push_many_elements_top_is_last_pushed PASSED  [ 33%]
+test/custom_stack_test.py::test_pop_returns_elements_in_lifo_order PASSED     [ 44%]
+test/custom_stack_test.py::test_top_does_not_remove_element PASSED            [ 55%]
+test/custom_stack_test.py::test_pop_on_empty_stack_raises_exception PASSED    [ 66%]
+test/custom_stack_test.py::test_top_on_empty_stack_raises_exception PASSED    [ 77%]
+test/custom_stack_test.py::test_push_on_full_stack_raises_exception PASSED    [ 88%]
+test/custom_stack_test.py::test_push_after_pop_on_full_stack_is_allowed PASSED [100%]
+
+Name                        Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------
+src/__init__.py                 0      0      0      0   100%
+src/custom_stack_class.py      24      0      6      0   100%
+-----------------------------------------------------------------------
+TOTAL                          24      0      6      0   100%
+
+9 passed
+```
+
+Comando original do projeto:
+
+```sh
+python -m pytest ./test/* --cov
+```
+
+```text
+Name                        Stmts   Miss  Cover
+-----------------------------------------------
+src/__init__.py                 0      0   100%
+src/custom_stack_class.py      24      0   100%
+test/__init__.py                0      0   100%
+test/custom_stack_test.py      51      0   100%
+-----------------------------------------------
+TOTAL                          75      0   100%
+
+9 passed
+```
+
+Relatório HTML (gerado em `htmlcov/`, que não é versionado):
+
+```sh
+python -m pytest test/ --cov=src --cov-branch --cov-report=html
+open htmlcov/index.html
+```
+
+#### Resumo da Parte 1
+
+| Etapa | Testes | Cobertura de linhas | Cobertura linhas + branches |
+|-------|:------:|:-------------------:|:---------------------------:|
+| Inicial | 1 | 79% | 70% |
+| Teste do bug (vermelho) | 2 (1 falha) | – | – |
+| Bug corrigido (verde) | 2 | – | 77% |
+| Suíte completa | 9 | **100%** | **100%** |
