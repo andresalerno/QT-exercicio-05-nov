@@ -18,7 +18,7 @@ class CustomStack:
         return self.size() == 0
 
     def push(self, element):
-        if (self.size == self.limit):
+        if self.size() == self.limit:
             raise StackFullException
         
         self.elements.append(element)
