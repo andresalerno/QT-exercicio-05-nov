@@ -30,6 +30,7 @@ python -m pytest test/ -v --cov=src --cov-branch --cov-report=term-missing
 | 1 | `fix/push-limite-pilha` | medição inicial, teste que expõe o bug e correção |
 | 2 | `test/cobertura-custom-stack` | demais testes da Parte 1 até 100% de cobertura |
 | 3 | `feat/number-asc-order` | Parte 2: classe `NumberAscOrder` e seus testes |
+| 4 | `refactor/classes-de-teste` | agrupa os testes nas classes `TestCustomStack` e `TestNumberAscOrder` |
 
 ---
 
@@ -407,6 +408,94 @@ TOTAL                             147      0   100%
 25 passed
 ```
 
+### Branch 4: `refactor/classes-de-teste`
+
+#### Passo 9 – Organização dos testes em classes
+
+O enunciado pede **"uma classe de teste com os casos de teste necessários"**. Os testes,
+que eram funções soltas no módulo, foram agrupados em classes:
+
+| Arquivo | Classe de teste |
+|---------|-----------------|
+| `test/custom_stack_test.py` | `TestCustomStack` |
+| `test/number_asc_order_test.py` | `TestNumberAscOrder` |
+
+A lógica dos testes não mudou. As alterações foram:
+
+- cada função de teste virou um método da classe, com o parâmetro `self`;
+- as fixtures (`stack` e `cut`) foram movidas para dentro das classes;
+- o helper `build_stack` continua no nível do módulo, por montar dados e não ser um teste;
+- o pytest coleta automaticamente classes com prefixo `Test` (sem `__init__`).
+
+Trecho da estrutura:
+
+```python
+class TestNumberAscOrder:
+
+    @pytest.fixture
+    def cut(self):
+        return NumberAscOrder()
+
+    # Cenário 1: pilha de 6 posições com 6 números sorteados aleatoriamente
+    def test_sort_six_random_numbers_returns_ascending_list(self, cut):
+        drawn = random.sample(range(1, 61), 6)
+        result = cut.sort(build_stack(drawn))
+        assert isinstance(result, list)
+        assert result == sorted(drawn)
+
+    # Cenário 2: pilha de 6 posições vazia
+    def test_sort_empty_stack_returns_empty_list(self, cut):
+        stack = CustomStack(STACK_LIMIT)
+        assert cut.sort(stack) == []
+        assert stack.is_empty() is True
+    ...
+```
+
+```sh
+python -m pytest test/ -v --cov=src --cov-branch --cov-report=term-missing
+```
+
+```text
+test/custom_stack_test.py::TestCustomStack::test_new_stack_is_empty PASSED [  4%]
+test/custom_stack_test.py::TestCustomStack::test_push_one_element_in_stack PASSED [  8%]
+test/custom_stack_test.py::TestCustomStack::test_push_many_elements_top_is_last_pushed PASSED [ 12%]
+test/custom_stack_test.py::TestCustomStack::test_pop_returns_elements_in_lifo_order PASSED [ 16%]
+test/custom_stack_test.py::TestCustomStack::test_top_does_not_remove_element PASSED [ 20%]
+test/custom_stack_test.py::TestCustomStack::test_pop_on_empty_stack_raises_exception PASSED [ 24%]
+test/custom_stack_test.py::TestCustomStack::test_top_on_empty_stack_raises_exception PASSED [ 28%]
+test/custom_stack_test.py::TestCustomStack::test_push_on_full_stack_raises_exception PASSED [ 32%]
+test/custom_stack_test.py::TestCustomStack::test_push_after_pop_on_full_stack_is_allowed PASSED [ 36%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_six_random_numbers_returns_ascending_list PASSED [ 40%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_known_numbers_returns_ascending_list PASSED [ 44%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_keeps_stack_in_original_draw_order PASSED [ 48%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_empty_stack_returns_empty_list PASSED [ 52%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_invalid_parameter_raises_type_error[None] PASSED [ 56%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_invalid_parameter_raises_type_error[invalid1] PASSED [ 60%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_invalid_parameter_raises_type_error[123456] PASSED [ 64%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_invalid_parameter_raises_type_error[6] PASSED [ 68%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_number_out_of_range_raises_value_error[0] PASSED [ 72%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_number_out_of_range_raises_value_error[61] PASSED [ 76%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_number_out_of_range_raises_value_error[-5] PASSED [ 80%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_non_integer_value_raises_type_error[7.5] PASSED [ 84%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_non_integer_value_raises_type_error[7] PASSED [ 88%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_non_integer_value_raises_type_error[True] PASSED [ 92%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_repeated_numbers_raises_value_error PASSED [ 96%]
+test/number_asc_order_test.py::TestNumberAscOrder::test_sort_uses_stack_public_interface PASSED [100%]
+
+Name                        Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------
+src/__init__.py                 0      0      0      0   100%
+src/custom_stack_class.py      24      0      6      0   100%
+src/number_asc_order.py        20      0     14      0   100%
+-----------------------------------------------------------------------
+TOTAL                          44      0     20      0   100%
+
+25 passed
+```
+
+Os mesmos 25 testes continuam passando com 100% de cobertura; agora os IDs dos testes incluem
+o nome da classe (`arquivo::Classe::teste`).
+
 ---
 
 ## Resumo final
@@ -414,8 +503,8 @@ TOTAL                             147      0   100%
 | Item | Resultado |
 |------|-----------|
 | Bug encontrado e corrigido | `push` comparava o método `self.size` com o limite, e a pilha nunca ficava cheia |
-| Testes da `CustomStack` | 1 → 9 testes |
-| Testes da `NumberAscOrder` | 16 testes (9 funções, 3 delas parametrizadas) |
+| Testes da `CustomStack` | 1 → 9 testes, na classe `TestCustomStack` |
+| Testes da `NumberAscOrder` | 16 testes (9 métodos, 3 deles parametrizados), na classe `TestNumberAscOrder` |
 | Cobertura da `CustomStack` | 79% (linhas) / 70% (branches) → **100% / 100%** |
 | Cobertura da `NumberAscOrder` | **100% / 100%** |
 | Métodos adicionados às classes existentes | nenhum |
