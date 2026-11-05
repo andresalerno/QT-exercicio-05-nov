@@ -252,3 +252,171 @@ open htmlcov/index.html
 | Teste do bug (vermelho) | 2 (1 falha) | – | – |
 | Bug corrigido (verde) | 2 | – | 77% |
 | Suíte completa | 9 | **100%** | **100%** |
+
+---
+
+## Parte 2 – Classe `NumberAscOrder`
+
+### Branch 3: `feat/number-asc-order`
+
+**Objetivo:** coletar os números sorteados da Mega Sena, armazenados numa `CustomStack` na
+ordem do sorteio, e devolvê-los numa `list` em ordem ascendente.
+
+#### Decisões de projeto
+
+| Decisão | Justificativa |
+|---------|---------------|
+| `sort()` usa só `is_empty`, `pop` e `push` | respeita o encapsulamento: não acessa `elements` e não cria métodos novos na `CustomStack` |
+| A pilha é restaurada depois da leitura | `sort()` não tem efeito colateral: a pilha continua com os números na ordem do sorteio |
+| Pilha vazia retorna `[]` | ordenar uma coleção vazia resulta numa lista vazia (mesma semântica de `sorted([])`) |
+| Parâmetro que não é `CustomStack` → `TypeError` | evita erros pouco claros (ex.: `AttributeError`) com entradas inválidas |
+| Valor não inteiro (inclusive `bool`) → `TypeError` | números da Mega Sena são inteiros; `bool` é subclasse de `int` em Python e precisa ser barrado explicitamente |
+| Número fora de 1–60 → `ValueError` | intervalo válido da Mega Sena |
+| Números repetidos → `ValueError` | um sorteio não repete dezenas |
+
+#### Passo 7 – Testes primeiro (vermelho)
+
+Arquivo `test/number_asc_order_test.py`:
+
+| Cenário | Teste(s) |
+|---------|----------|
+| **Pilha de 6 posições com 6 números sorteados aleatoriamente** | `test_sort_six_random_numbers_returns_ascending_list` (usa `random.sample(range(1, 61), 6)` e compara com `sorted()`) |
+| Pilha com 6 números conhecidos (resultado determinístico) | `test_sort_known_numbers_returns_ascending_list` |
+| A pilha não é alterada por `sort()` | `test_sort_keeps_stack_in_original_draw_order` |
+| **Pilha de 6 posições vazia** | `test_sort_empty_stack_returns_empty_list` |
+| Parâmetro inválido (`None`, `list`, `str`, `int`) | `test_sort_invalid_parameter_raises_type_error` (parametrizado, 4 casos) |
+| Número fora do intervalo (`0`, `61`, `-5`) | `test_sort_number_out_of_range_raises_value_error` (parametrizado, 3 casos) |
+| Valor não inteiro (`7.5`, `"7"`, `True`) | `test_sort_non_integer_value_raises_type_error` (parametrizado, 3 casos) |
+| Números repetidos | `test_sort_repeated_numbers_raises_value_error` |
+| Uso apenas da interface pública da pilha (**pytest-mock**) | `test_sort_uses_stack_public_interface` (`mocker.Mock(spec=CustomStack)`) |
+
+```sh
+python -m pytest test/ -v
+```
+
+```text
+__________________ ERROR collecting test/number_asc_order_test.py ___________________
+ImportError while importing test module '.../custom-stack/test/number_asc_order_test.py'.
+test/number_asc_order_test.py:6: in <module>
+    from src.number_asc_order import NumberAscOrder
+E   ModuleNotFoundError: No module named 'src.number_asc_order'
+============================== short test summary info ==============================
+ERROR test/number_asc_order_test.py
+!!!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!!!!
+1 error
+```
+
+O teste falha porque a classe ainda não existe.
+
+#### Passo 8 – Implementação (verde)
+
+Arquivo `src/number_asc_order.py`:
+
+```python
+from src.custom_stack_class import CustomStack
+
+
+class NumberAscOrder:
+    MIN_NUMBER = 1
+    MAX_NUMBER = 60
+
+    def sort(self, stack):
+        if not isinstance(stack, CustomStack):
+            raise TypeError("O parâmetro deve ser uma instância de CustomStack")
+
+        numbers = []
+        while not stack.is_empty():
+            numbers.append(stack.pop())
+
+        # Restaura a pilha na ordem original do sorteio (sort não tem efeito colateral)
+        for number in reversed(numbers):
+            stack.push(number)
+
+        for number in numbers:
+            if isinstance(number, bool) or not isinstance(number, int):
+                raise TypeError(f"Valor inválido na pilha: {number!r}")
+            if not self.MIN_NUMBER <= number <= self.MAX_NUMBER:
+                raise ValueError(f"Número fora do intervalo 1-60: {number}")
+
+        if len(set(numbers)) != len(numbers):
+            raise ValueError("A pilha contém números repetidos")
+
+        return sorted(numbers)
+```
+
+```sh
+python -m pytest test/ -v --cov=src --cov-branch --cov-report=term-missing
+```
+
+```text
+test/custom_stack_test.py::test_new_stack_is_empty PASSED                     [  4%]
+test/custom_stack_test.py::test_push_one_element_in_stack PASSED              [  8%]
+test/custom_stack_test.py::test_push_many_elements_top_is_last_pushed PASSED  [ 12%]
+test/custom_stack_test.py::test_pop_returns_elements_in_lifo_order PASSED     [ 16%]
+test/custom_stack_test.py::test_top_does_not_remove_element PASSED            [ 20%]
+test/custom_stack_test.py::test_pop_on_empty_stack_raises_exception PASSED    [ 24%]
+test/custom_stack_test.py::test_top_on_empty_stack_raises_exception PASSED    [ 28%]
+test/custom_stack_test.py::test_push_on_full_stack_raises_exception PASSED    [ 32%]
+test/custom_stack_test.py::test_push_after_pop_on_full_stack_is_allowed PASSED [ 36%]
+test/number_asc_order_test.py::test_sort_six_random_numbers_returns_ascending_list PASSED [ 40%]
+test/number_asc_order_test.py::test_sort_known_numbers_returns_ascending_list PASSED [ 44%]
+test/number_asc_order_test.py::test_sort_keeps_stack_in_original_draw_order PASSED [ 48%]
+test/number_asc_order_test.py::test_sort_empty_stack_returns_empty_list PASSED [ 52%]
+test/number_asc_order_test.py::test_sort_invalid_parameter_raises_type_error[None] PASSED [ 56%]
+test/number_asc_order_test.py::test_sort_invalid_parameter_raises_type_error[invalid1] PASSED [ 60%]
+test/number_asc_order_test.py::test_sort_invalid_parameter_raises_type_error[123456] PASSED [ 64%]
+test/number_asc_order_test.py::test_sort_invalid_parameter_raises_type_error[6] PASSED [ 68%]
+test/number_asc_order_test.py::test_sort_number_out_of_range_raises_value_error[0] PASSED [ 72%]
+test/number_asc_order_test.py::test_sort_number_out_of_range_raises_value_error[61] PASSED [ 76%]
+test/number_asc_order_test.py::test_sort_number_out_of_range_raises_value_error[-5] PASSED [ 80%]
+test/number_asc_order_test.py::test_sort_non_integer_value_raises_type_error[7.5] PASSED [ 84%]
+test/number_asc_order_test.py::test_sort_non_integer_value_raises_type_error[7] PASSED [ 88%]
+test/number_asc_order_test.py::test_sort_non_integer_value_raises_type_error[True] PASSED [ 92%]
+test/number_asc_order_test.py::test_sort_repeated_numbers_raises_value_error PASSED [ 96%]
+test/number_asc_order_test.py::test_sort_uses_stack_public_interface PASSED   [100%]
+
+Name                        Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------
+src/__init__.py                 0      0      0      0   100%
+src/custom_stack_class.py      24      0      6      0   100%
+src/number_asc_order.py        20      0     14      0   100%
+-----------------------------------------------------------------------
+TOTAL                          44      0     20      0   100%
+
+25 passed
+```
+
+Comando original do projeto:
+
+```sh
+python -m pytest ./test/* --cov
+```
+
+```text
+Name                            Stmts   Miss  Cover
+---------------------------------------------------
+src/__init__.py                     0      0   100%
+src/custom_stack_class.py          24      0   100%
+src/number_asc_order.py            20      0   100%
+test/__init__.py                    0      0   100%
+test/custom_stack_test.py          51      0   100%
+test/number_asc_order_test.py      52      0   100%
+---------------------------------------------------
+TOTAL                             147      0   100%
+
+25 passed
+```
+
+---
+
+## Resumo final
+
+| Item | Resultado |
+|------|-----------|
+| Bug encontrado e corrigido | `push` comparava o método `self.size` com o limite, e a pilha nunca ficava cheia |
+| Testes da `CustomStack` | 1 → 9 testes |
+| Testes da `NumberAscOrder` | 16 testes (9 funções, 3 delas parametrizadas) |
+| Cobertura da `CustomStack` | 79% (linhas) / 70% (branches) → **100% / 100%** |
+| Cobertura da `NumberAscOrder` | **100% / 100%** |
+| Métodos adicionados às classes existentes | nenhum |
+| Ferramentas | pytest 8.1.1, pytest-cov 5.0.0, pytest-mock 3.14.0 |
